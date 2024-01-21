@@ -3,7 +3,7 @@ use crate::{
         borders::{get_render_horizontal_borders, get_render_vertical_borders},
         js_types::{
             JsHtmlOutput, JsRenderBorder, JsRenderCell, JsRenderCodeCell, JsRenderCodeCellState,
-            JsRenderFill,
+            JsRenderFill, JsPngOutput
         },
         CellAlign, CodeCellRunResult, NumericFormatKind,
     },
@@ -109,6 +109,22 @@ impl Sheet {
                         // from colors.ts: colors.languagePython
                         text_color: Some(String::from("#3776ab")),
                     };
+                } else if let CellValue::Png(_) = value {
+                    return JsRenderCell {
+                        x,
+                        y,
+
+                        value: " CHART".to_string(), // Or PNG?
+                        language,
+
+                        align: None,
+                        wrap: None,
+                        bold: None,
+                        italic: Some(true),
+
+                        // from colors.ts: colors.languagePython
+                        text_color: Some(String::from("#3776ab")),
+                    };
                 } else if let CellValue::Error(error) = value {
                     let value = match error.msg {
                         ErrorMsg::Spill => " SPILL",
@@ -190,6 +206,25 @@ impl Sheet {
                     html: output.to_display(None, None, None),
                     w,
                     h,
+                })
+            })
+            .collect()
+    }
+
+    pub fn get_png_output(&self) -> Vec<JsPngOutput> {
+        self.code_cells
+            .iter()
+            .filter_map(|(cell_ref, code_cell_value)| {
+                let output = code_cell_value.get_output_value(0, 0)?;
+                if !matches!(output, CellValue::Png(_)) {
+                    return None;
+                }
+                let pos = self.cell_ref_to_pos(*cell_ref)?;
+                Some(JsPngOutput {
+                    sheet_id: self.id.to_string(),
+                    x: pos.x,
+                    y: pos.y,
+                    png: output.to_display(None, None, None),
                 })
             })
             .collect()
